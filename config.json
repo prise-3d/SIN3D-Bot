@@ -1,0 +1,6 @@
+{
+  "hostConfig": "https://diran.univ-littoral.fr",
+  "experimentId": "sin3d-expe",
+  "experimentName": "MatchExtractsWithReference",
+  "sceneName": "50_shades_of_grey"
+}
