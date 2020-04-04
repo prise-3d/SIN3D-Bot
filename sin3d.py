@@ -22,9 +22,13 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 
 client = discord.Client()
 
+rules = ['creator', 'superadmin', 'admin']
+
 connection = MongoClient()
 db = connection['sind3d-db']
-collection = db['sind3d-collection']
+
+contributors_collection = db['sind3d-contributors']
+management_collection = db['sind3d-management']
 
 embed_color = 0x128ba6
 
@@ -52,9 +56,15 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # extract current user role
+    user_role = management_collection.find_one({'user_id': message.author.id})
+
+    # extract creator user
+    creator = management_collection.find_one({'role': 'creator'})
+
     if message.content.lower().startswith('--sin3d-list'):
 
-        contributors = collection.find()
+        contributors = contributors_collection.find()
 
         discord_contributors = ""
         anonymous_contributors = ""
@@ -100,11 +110,11 @@ async def on_message(message):
         if len(splited_message) > 1 and len(splited_message) <= 2:
             userId = splited_message[1] # the second element
 
-            results = collection.find_one({'user_id': userId})
+            results = contributors_collection.find_one({'user_id': userId})
             
             if results is None:
                 # add user with custom userId as contributors
-                collection.insert_one({'user_id': userId, 'username': userId, 'discord': False, 'config': config})
+                contributors_collection.insert_one({'user_id': userId, 'username': userId, 'discord': False, 'config': config})
 
                 user_config = config
                 user_config['userId'] = userId
@@ -147,7 +157,7 @@ async def on_message(message):
             
         else:
             embed = discord.Embed(
-                title=':warning: Unvalid use of command :warning:', 
+                title=':warning: Invalid use of command :warning:', 
                 description='It seems the :id: passed is not valid', 
                 color=embed_color)
             embed.add_field(
@@ -164,11 +174,11 @@ async def on_message(message):
 
     if message.content.lower().startswith('--sin3d-link'):
         
-        results = collection.find_one({'user_id': message.author.id})
+        results = contributors_collection.find_one({'user_id': message.author.id})
         
         if results is None:
             # add user with id as contributors
-            collection.insert_one({'user_id': message.author.id, 'username': str(message.author),'discord': True, 'config': config})
+            contributors_collection.insert_one({'user_id': message.author.id, 'username': str(message.author),'discord': True, 'config': config})
 
         # custom user config with its own user ID
         userId = message.author.id
@@ -221,11 +231,121 @@ async def on_message(message):
 
         await message.channel.send(embed=embed)
 
+    # add admin to SIN3D-bot
+    if message.content.lower().startswith('--sin3d-admin-add'):
+
+        # common_guild = False
+
+        # # find common guild with current user
+        # for guild in client.guilds:
+        #     if message.author in guild.members:
+        #         common_guild = True
+
+        if user_role['role'] == 'superadmin' or user_role['role'] == 'creator': 
+
+            elments = message.content.lower().split(' ')
+
+            if len(elments) > 1 and len(elments) <= 2:
+
+                user_id_to_add = elments[1]
+
+                user_to_add = discord.utils.find(lambda m: m.id == int(user_id_to_add), client.users)
+
+                # check if user can be added (has common guild with bot)
+                if user_to_add:
+                    
+                    # check if user is not already added
+                    check_user = management_collection.find_one({'user_id': user_id_to_add})
+
+                    if check_user:
+                        embed = discord.Embed(
+                            title=':warning: User already has admin role :warning:', 
+                            description='It seems {0} has already been granted'.format(str(user_to_add)), 
+                            color=embed_color)
+                    else:
+                        management_collection.insert_one({
+                            'user_id': user_to_add.id, 
+                            'username': str(user_to_add), 
+                            'role': 'admin', 
+                            'added_by': message.author.id})
+
+                        embed = discord.Embed(
+                            title=':ballot_box_with_check: Update validated :ballot_box_with_check:', 
+                            description='{0} has now admin role'.format(str(user_to_add)),
+                            color=embed_color)
+                        embed.add_field(
+                            name=":white_small_square: You can take a view of the admin user list using:", 
+                            value="`--sin3d-admin-list`", 
+                            inline=False)
+                        embed.set_footer(text="Do not hesitate to contact {0} for further information".format(creator['username'])) 
+                        
+                else:
+                    embed = discord.Embed(
+                        title=':warning: User cannot be added :warning:', 
+                        description='It seems user with {0} :id: has no common guild with `SIN3D-bot`'.format(user_id_to_add), 
+                        color=embed_color)
+                    embed.set_footer(text="Do not hesitate to contact {0} for further information".format(creator['username'])) 
+            else:
+                embed = discord.Embed(
+                    title=':warning: Unvalid use of command :warning:', 
+                    description='It seems the user :id: passed is not valid', 
+                    color=embed_color)
+                embed.add_field(
+                    name=":white_small_square: Please run again this command as shown in the example:", 
+                    value="`--sin3d-admin-add {{user-identifier}}`", 
+                    inline=False)
+                embed.add_field(
+                    name="\t__Example:__", 
+                    value="\t`--sin3d-admin-add a1b2c3d4e5f6g7`",
+                    inline=False)
+                embed.set_footer(text="Please, use your previous username if it is not lost!") 
+
+        else:
+            embed = discord.Embed(
+                title=':warning: You cannot use this command :warning:', 
+                description='You do not have enough rights for doing this', 
+                color=embed_color)
+            embed.set_footer(text="Please contact {0} if you need to be upgraded".format(creator['username'])) 
+
+        await message.author.send(embed=embed)
+
+
+    if message.content.lower().startswith('--sin3d-admin-remove'):
+        print('ready to remove')
+
+
+
 @client.event
 async def on_ready():
     
     print(
         f'{client.user} is connected\n'
     )
+
+    # add of creator
+    creator = management_collection.find_one({'role': 'creator'})
+
+    if creator is None:
+        user_creator = discord.utils.find(lambda m: m.id == int(config['creator']), client.users)
+        
+        if user_creator is not None:
+            management_collection.insert_one({
+                'user_id': user_creator.id, 
+                'username': str(user_creator), 
+                'role': 'creator', 
+                'added_by': user_creator.id})
+
+            print('Creator account is created')
+        else:
+            print('Creator user not found...')
+            exit(0)
+
+    elif creator['user_id'] != int(config['creator']):
+
+        print('Remove previous creator! Creator is unique')
+        management_collection.delete_one({'_id': creator['_id']})
+    else:
+        print('Current creator is {0}'.format(creator['username']))
+        
 
 client.run(TOKEN)

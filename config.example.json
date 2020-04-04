@@ -1,0 +1,13 @@
+{
+    "creator": "{creator-discord-id}",
+    "superadmins":[
+      "{superadmin1-discord-id}",
+      "{superadmin2-discord-id}"
+    ],
+    "config":{
+      "hostConfig": "https://{domain}",
+      "experimentId": "{experiment-identifier}",
+      "experimentName": "{experiment-name}",
+      "sceneName": "{scene-name}"
+    }
+  }
