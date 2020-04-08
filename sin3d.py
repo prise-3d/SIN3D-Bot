@@ -878,6 +878,6 @@ async def on_ready():
 
         if not exists:
             print('Configuration of', guild.name, 'which is no longer in common with bot is removed')
-            configurations_collection.delete_one({'guild_id': guild.id})
+            configurations_collection.delete_one({'guild_id': conf['guild_id']})
 
 client.run(TOKEN)
