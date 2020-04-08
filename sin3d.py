@@ -806,22 +806,23 @@ async def on_message(message):
             await message.author.send(embed=embed)
 
 @client.event
-async def on_guild_remove():
+async def on_guild_remove(guild):
 
-    # if not exists create configuration for all guild joined
-    for guild in client.guilds:
+    # check guild config
+    guild_config = configurations_collection.find_one({'guild_id': guild.id})
 
-        # check if guild configuration exists
-        check_guild_config(guild)
+    # remove configuration if exists
+    if guild_config:
+        configurations_collection.delete_one({'guild_id': guild.id})
+        print('Configuration for', guild.name, 'has been removed')
 
 @client.event
-async def on_guild_join():
+async def on_guild_join(guild):
 
-    # if not exists create configuration for all guild joined
-    for guild in client.guilds:
-
-        # check if guild configuration exists
-        check_guild_config(guild)
+    # new guild joined
+    print('New guild joined:', guild.name)
+    # check guild config
+    check_guild_config(guild)
 
 @client.event
 async def on_ready():
@@ -858,8 +859,25 @@ async def on_ready():
 
     # if not exists create configuration for all guild joined
     for guild in client.guilds:
-
+    
         # check if guild configuration exists
         check_guild_config(guild)
+
+
+    # get configurations
+    configurations = configurations_collection.find()
+      
+    # check if guild always in common with bot
+    for conf in configurations:
+
+        exists = False
+
+        for guild in client.guilds:
+            if guild.id == conf['guild_id']:
+                exists = True
+
+        if not exists:
+            print('Configuration of', guild.name, 'which is no longer in common with bot is removed')
+            configurations_collection.delete_one({'guild_id': guild.id})
 
 client.run(TOKEN)
