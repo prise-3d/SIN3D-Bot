@@ -26,13 +26,18 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 client = discord.Client()
 
 rules = ['creator', 'admin']
+output_folder = 'output'
+output_results_folder = os.path.join(output_folder, 'results')
+output_means_folder = os.path.join(output_folder, 'means')
 
 connection = MongoClient()
-db = connection['sind3d-db']
 
-contributors_collection = db['sind3d-contributors']
-management_collection = db['sind3d-management']
-configurations_collection = db['sind3d-configuration']
+db = connection['sin3d']
+
+contributors_collection = db['sin3d-contributors']
+management_collection = db['sin3d-management']
+configurations_collection = db['sin3d-configuration']
+data_collection = db['datas']
 
 embed_color = 0x128ba6
 diran_url_api = 'https://diran.univ-littoral.fr/api/'
@@ -83,7 +88,7 @@ async def on_message(message):
 
     if message.content.lower().startswith('--sin3d-list'):
 
-        contributors = contributors_collection.find()
+        contributors = contributors_collection.find().sort('_id', -1)
 
         discord_contributors = ""
         anonymous_contributors = ""
@@ -96,10 +101,21 @@ async def on_message(message):
 
         for contributor in contributors:
             if contributor['discord']:
-                discord_contributors += ":white_small_square: " + contributor['username'] + " with (" + contributor['guild_name'] + ")\n"
+
+                if n_discord < 5:
+                    if len(contributor['guild_name']) > 0:
+                        discord_contributors += ":white_small_square: " + contributor['username'] + " with (" + contributor['guild_name'] + ")\n"
+                    else:
+                        discord_contributors += ":white_small_square: " + contributor['username'] + "\n"
+
                 n_discord += 1
             else:
-                anonymous_contributors += ":white_small_square: " + contributor['user_id'] + " with (" + contributor['guild_name'] + ")\n"
+
+                if n_anonymous < 5:
+                    if len(contributor['guild_name']) > 0:
+                        anonymous_contributors += ":white_small_square: " + contributor['user_id'] + " with (" + contributor['guild_name'] + ")\n"
+                    else:
+                        anonymous_contributors += ":white_small_square: " + contributor['user_id'] + "\n"
                 n_anonymous += 1
 
         anonymous_contributors = 'No anonymous contributors yet' if anonymous_contributors == "" else anonymous_contributors
@@ -110,16 +126,16 @@ async def on_message(message):
             description=':earth_africa: List of {0} :earth_africa:'.format(contributor_str), 
             color=embed_color)
         embed.add_field(
-            name="Discord ({0})".format(n_discord), 
+            name="**Discord ({0})**{1}".format(n_discord, ', last five contributors' if n_discord >= 5 else ''), 
             value=discord_contributors, 
             inline=False)
         embed.add_field(
-            name="Anonymous ({0})".format(n_anonymous), 
+            name="**Anonymous ({0})**{1}".format(n_anonymous, ', last five contributors:' if n_anonymous >= 5 else ''), 
             value=anonymous_contributors, 
             inline=False)
         embed.set_footer(text="Thanks a lot for your contributions!") 
         
-        await message.author.send(embed=embed)
+        await message.channel.send(embed=embed)
 
     if message.content.lower().startswith('--sin3d-default-custom'):
 
@@ -186,7 +202,7 @@ async def on_message(message):
                         inline=False)
                     embed.add_field(
                         name="\t__Example:__", 
-                        value="\t`--sin3d-config-update --expeId myexpeId --userId myuserId`",
+                        value="\t`--sin3d-default-custom --expeId myexpeId --userId myuserId`",
                         inline=False)
                     embed.set_footer(text="All params are required") 
             except:
@@ -200,7 +216,7 @@ async def on_message(message):
                     inline=False)
                 embed.add_field(
                     name="\t__Example:__", 
-                    value="\t`--sin3d-config-update --expeId myexpeId --userId myuserId`",
+                    value="\t`--sin3d-default-custom --expeId myexpeId --userId myuserId`",
                     inline=False)
                 embed.set_footer(text="All params are required") 
         else:
@@ -214,7 +230,7 @@ async def on_message(message):
                 inline=False)
             embed.add_field(
                 name="\t__Example:__", 
-                value="\t`--sin3d-config-update --expeId myexpeId --userId myuserId`",
+                value="\t`--sin3d-default-custom --expeId myexpeId --userId myuserId`",
                 inline=False)
             embed.set_footer(text="All params are required") 
 
@@ -379,11 +395,19 @@ async def on_message(message):
             inline=False)
         embed.add_field(
             value="`--sin3d-custom {{custom-identifier}}`",
-            name=":white_small_square: Send your SIN3D app :link: with custom :id: (**anonymous**)",
+            name=":white_small_square: Send your SIN3D app :link: associated with your guild and with custom :id: (**anonymous**)",
             inline=False)
         embed.add_field(
             value="\t`--sin3d-custom my-identifier`",
             name="\t__Example:__", 
+            inline=False)
+        embed.add_field(
+            name=":white_small_square: Create custom a data with specific experiment and user :id:", 
+            value="`--sin3d-default-custom --expeId {{myexpeId}} --userId {{myuserId}}`", 
+            inline=False)
+        embed.add_field(
+            name="\t__Example:__", 
+            value="\t`--sin3d-default-custom --expeId myexpeId --userId myuserId`",
             inline=False)
         embed.add_field(
             value="`--sin3d-list`",
@@ -395,12 +419,12 @@ async def on_message(message):
         if user_role['role'] == 'admin' or user_role['role'] == 'creator':
 
             embed.add_field(
-                name=":white_small_square: Enables to update experiment config of guild:", 
-                value="`--sin3d-config-update {{guild-id}} --host {{host}} --expe {{expe}} --expeId {{myexpeId}} --startScene {{scene}}`", 
+                name=":white_small_square: Please run again this command as shown in the example:", 
+                value="`--sin3d-config-update {{guild-id}} --hostConfig {{host}} --experimentName {{expe}} --experimentId {{myexpeId}} --sceneName {{scene}}`", 
                 inline=False)
             embed.add_field(
                 name="\t__Example:__", 
-                value="\t`--sin3d-config-update {{guild-id}} --host https://host.com --expe myexpe --expeId myexpeId --startScene myscene`",
+                value="\t`--sin3d-config-update {{guild-id}} --hostConfig https://host.com --experimentName myexpe --experimentId myexpeId --sceneName myscene`",
                 inline=False)
             embed.add_field(
                 value="`--sin3d-config-list`",  
@@ -618,20 +642,20 @@ async def on_message(message):
                     parser = argparse.ArgumentParser(description="Read and compute params for configuration update")
 
                     # all default params use previous data
-                    parser.add_argument('--host', type=str, help='host configuration', default=conf_to_update['config']['hostConfig'])
-                    parser.add_argument('--expe', type=str, help='experiment to use for current guild', default=conf_to_update['config']['experimentName'])
-                    parser.add_argument('--expeId', type=str, help='experiment id to use for current guild', default=conf_to_update['config']['experimentId'])
-                    parser.add_argument('--startScene', type=str, help='start scene to use', default=conf_to_update['config']['sceneName'])
+                    parser.add_argument('--hostConfig', type=str, help='host configuration', default=conf_to_update['config']['hostConfig'])
+                    parser.add_argument('--experimentName', type=str, help='experiment to use for current guild', default=conf_to_update['config']['experimentName'])
+                    parser.add_argument('--experimentId', type=str, help='experiment id to use for current guild', default=conf_to_update['config']['experimentId'])
+                    parser.add_argument('--sceneName', type=str, help='start scene to use', default=conf_to_update['config']['sceneName'])
 
                     params = ' '.join(elements[2:])
 
                     try:
                         args = parser.parse_args(shlex.split(params))
 
-                        p_host         = args.host
-                        p_expe         = args.expe
-                        p_expeId       = args.expeId
-                        p_startScene   = args.startScene
+                        p_host         = args.hostConfig
+                        p_expe         = args.experimentName
+                        p_expeId       = args.experimentId
+                        p_startScene   = args.sceneName
 
                         response = requests.get(diran_url_scenes_list).json()
 
@@ -641,6 +665,9 @@ async def on_message(message):
                             conf_to_update['config']['experimentName'] = p_expe
                             conf_to_update['config']['experimentId'] = p_expeId
                             conf_to_update['config']['sceneName'] = p_startScene
+
+                            if conf_to_update['config']['hostConfig'][-1] == '/':
+                                conf_to_update['config']['hostConfig'] = conf_to_update['config']['hostConfig'][:-1]
 
                             # update data
                             configurations_collection.update_one({'_id': conf_to_update['_id']}, {'$set': {'config': conf_to_update['config']}}, upsert=True)
@@ -671,11 +698,11 @@ async def on_message(message):
                             color=embed_color)
                         embed.add_field(
                             name=":white_small_square: Please run again this command as shown in the example:", 
-                            value="`--sin3d-config-update {{guild-id}} --host {{host}} --expe {{expe}} --expeId {{myexpeId}} --startScene {{scene}}`", 
+                            value="`--sin3d-config-update {{guild-id}} --hostConfig {{host}} --experimentName {{expe}} --experimentId {{myexpeId}} --sceneName {{scene}}`", 
                             inline=False)
                         embed.add_field(
                             name="\t__Example:__", 
-                            value="\t`--sin3d-config-update {{guild-id}} --host https://host.com --expe myexpe --expeId myexpeId --startScene myscene`",
+                            value="\t`--sin3d-config-update {{guild-id}} --hostConfig https://host.com --experimentName myexpe --experimentId myexpeId --sceneName myscene`",
                             inline=False)
                         embed.set_footer(text="You do not need to pass all params but at least one") 
                 else:
@@ -690,11 +717,11 @@ async def on_message(message):
                     color=embed_color)
                 embed.add_field(
                     name=":white_small_square: Please run again this command as shown in the example:", 
-                    value="`--sin3d-config-update {{guild-id}} --host {{host}} --expe {{expe}} --expeId {{myexpeId}} --startScene {{scene}}`", 
+                    value="`--sin3d-config-update {{guild-id}} --hostConfig {{host}} --experimentName {{expe}} --experimentId {{myexpeId}} --sceneName {{scene}}`", 
                     inline=False)
                 embed.add_field(
                     name="\t__Example:__", 
-                    value="\t`--sin3d-config-update {{guild-id}} --host https://host.com --expe myexpe --expeId myexpeId --startScene myscene`",
+                    value="\t`--sin3d-config-update {{guild-id}} --hostConfig https://host.com --experimentName myexpe --experimentId myexpeId --sceneName myscene`",
                     inline=False)
                 embed.set_footer(text="You do not need to pass all params but at least one") 
 
@@ -707,6 +734,76 @@ async def on_message(message):
 
         await message.author.send(embed=embed)
 
+    if message.content.lower().startswith('--sin3d-results'):
+
+        if user_role['role'] == 'creator' or user_role['role'] == 'admin':
+            elements = message.content.split(' ')
+
+            # if there is at least one experiment id
+            if len(elements) > 1:
+
+                experiments_identifier = elements[1:]
+
+                print(experiments_identifier)
+
+                experiment_results = data_collection.find({
+                    'data.msg.experimentName': 'MatchExtractsWithReference', 
+                    'data.msgId': 'EXPERIMENT_VALIDATED',
+                    'data.experimentId':{
+                        '$in': experiments_identifier
+                    }
+                    # '$not': { '$gt': 1.99 }
+                })
+
+                print(experiment_results.count())
+
+                if not os.path.exists(output_results_folder):
+                    os.makedirs(output_results_folder)
+
+                n_files = len(os.listdir(output_results_folder)) + 1
+                results_filename = 'experiments_results_' + str(n_files) + '.json'
+                results_filepath = os.path.join(output_results_folder, results_filename)
+
+                export_data = []
+
+                for result in experiment_results:
+                    export_data.append(result['data'])
+
+                with open(results_filepath, 'w') as f:
+                    f.write(json.dumps(export_data, indent=4))
+
+                discord_file = discord.File(fp=results_filepath, filename=results_filename)
+
+                embed = discord.Embed(
+                    title=':ballot_box_with_check: Extraction done with success :ballot_box_with_check:', 
+                    description='Here your extracted file data',
+                    color=embed_color)
+
+                await message.author.send(embed=embed, file=discord_file)
+            else:
+                embed = discord.Embed(
+                    title=':warning: Unvalid use of command :warning:', 
+                    description='It seems the params passed are not valid (need at least one param to extract data)', 
+                    color=embed_color)
+                embed.add_field(
+                    name=":white_small_square: Please run again this command as shown in the example:", 
+                    value="`--sin3d-results {{expeId1}} {{expeId2}} ... {{expeIdN}}`", 
+                    inline=False)
+                embed.add_field(
+                    name="\t__Example:__", 
+                    value="\t`--sin3d-results myexpeId1 myexpeId2`",
+                    inline=False)
+                embed.set_footer(text="You do not need to pass all params but at least one") 
+                
+                await message.author.send(embed=embed)
+        else:
+            embed = discord.Embed(
+                title=':warning: You cannot use this command :warning:', 
+                description='You do not have enough rights for doing this', 
+                color=embed_color)
+            embed.set_footer(text="Please contact {0} if you need to be upgraded".format(creator['username'])) 
+
+            await message.author.send(embed=embed)
 
 @client.event
 async def on_guild_remove():
