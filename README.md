@@ -6,6 +6,10 @@ Discord bot which generates custom links for SIN3D-app.
 
 ## Requirements
 
+<p align="center">
+    <img src="https://github.com/prise-3d/SIN3D-bot/blob/master/expe.png" width="50%">
+</p>
+
 Set your own configutation:
 ```
 cp .env.example .env
