@@ -28,6 +28,7 @@ client = discord.Client()
 rules = ['creator', 'admin']
 output_folder = 'output'
 output_results_folder = os.path.join(output_folder, 'results')
+output_newsletter_folder = os.path.join(output_folder, 'newsletter')
 output_means_folder = os.path.join(output_folder, 'means')
 
 connection = MongoClient()
@@ -804,6 +805,72 @@ async def on_message(message):
             embed.set_footer(text="Please contact {0} if you need to be upgraded".format(creator['username'])) 
 
             await message.author.send(embed=embed)
+
+    if message.content.lower().startswith('--sin3d-newsletter'):
+
+        if user_role['role'] == 'creator' or user_role['role'] == 'admin':
+
+             # if there is at least one experiment id
+            if len(elements) > 1:
+
+                experiment_name = elements[1:]
+
+                print(experiment_name)
+
+                experiment_newsletter = data_collection.find({
+                    'data.msg.experimentName': experiment_name, 
+                    'data.msgId': 'NEWSLETTER'
+                })
+
+                print(experiment_results.count())
+
+                if not os.path.exists(output_newsletter_folder):
+                    os.makedirs(output_newsletter_folder)
+
+                n_files = len(os.listdir(output_newsletter_folder)) + 1
+                results_filename = 'newsletter_' + str(n_files) + '.json'
+                results_filepath = os.path.join(output_newsletter_folder, results_filename)
+
+                export_data = []
+
+                for result in experiment_results:
+                    export_data.append(result['data'])
+
+                with open(results_filepath, 'w') as f:
+                    f.write(json.dumps(export_data, indent=4))
+
+                discord_file = discord.File(fp=results_filepath, filename=results_filename)
+
+                embed = discord.Embed(
+                    title=':ballot_box_with_check: Extraction done with success :ballot_box_with_check:', 
+                    description='Here your extracted newsletter file data',
+                    color=embed_color)
+
+                await message.author.send(embed=embed, file=discord_file)
+            
+            else:
+                embed = discord.Embed(
+                    title=':warning: Unvalid use of command :warning:', 
+                    description='It seems the param passed is not valid', 
+                    color=embed_color)
+                embed.add_field(
+                    name=":white_small_square: Please run again this command as shown in the example:", 
+                    value="`--sin3d-newsletter {{experimentName}}`", 
+                    inline=False)
+                embed.add_field(
+                    name="\t__Example:__", 
+                    value="\t`--sin3d-newsletter experimentName`",
+                    inline=False)
+                embed.set_footer(text="You do not need to pass all params but at least one") 
+                
+                await message.author.send(embed=embed)
+        else:
+            embed = discord.Embed(
+                title=':warning: You cannot use this command :warning:', 
+                description='You do not have enough rights for doing this', 
+                color=embed_color)
+            embed.set_footer(text="Please contact {0} if you need to be upgraded".format(creator['username'])) 
+
 
 @client.event
 async def on_guild_remove(guild):
