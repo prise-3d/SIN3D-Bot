@@ -815,7 +815,7 @@ async def on_message(message):
              # if there is at least one experiment id
             if len(elements) > 1:
 
-                experiment_name = elements[1:]
+                experiment_name = elements[-1]
 
                 print(experiment_name)
 
