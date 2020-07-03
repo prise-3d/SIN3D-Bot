@@ -824,7 +824,7 @@ async def on_message(message):
                     'data.msgId': 'NEWSLETTER'
                 })
 
-                print(experiment_results.count())
+                print(experiment_newsletter.count())
 
                 if not os.path.exists(output_newsletter_folder):
                     os.makedirs(output_newsletter_folder)
@@ -835,7 +835,7 @@ async def on_message(message):
 
                 export_data = []
 
-                for result in experiment_results:
+                for result in experiment_newsletter:
                     export_data.append(result['data'])
 
                 with open(results_filepath, 'w') as f:
