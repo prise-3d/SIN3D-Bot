@@ -1,14 +1,14 @@
 # SIN3D-Bot
 
+<p align="center">
+    <img src="https://github.com/prise-3d/SIN3D-bot/blob/master/expe.png" width="20%">
+</p>
+
 ## Description
 
 Discord bot which generates custom links for SIN3D-app.
 
 ## Requirements
-
-<p align="center">
-    <img src="https://github.com/prise-3d/SIN3D-bot/blob/master/expe.png" width="20%">
-</p>
 
 Set your own configutation:
 ```
