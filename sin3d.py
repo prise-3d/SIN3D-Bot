@@ -809,6 +809,8 @@ async def on_message(message):
     if message.content.lower().startswith('--sin3d-newsletter'):
 
         if user_role['role'] == 'creator' or user_role['role'] == 'admin':
+            
+            elements = message.content.split(' ')
 
              # if there is at least one experiment id
             if len(elements) > 1:
