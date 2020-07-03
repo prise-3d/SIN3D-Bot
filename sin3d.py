@@ -815,12 +815,12 @@ async def on_message(message):
              # if there is at least one experiment id
             if len(elements) > 1:
 
-                experiment_name = elements[-1]
+                experiment_id = elements[-1]
 
-                print(experiment_name)
+                print(experiment_id)
 
                 experiment_newsletter = data_collection.find({
-                    'data.msg.experimentName': experiment_name, 
+                    'data.experimentId': experiment_id, 
                     'data.msgId': 'NEWSLETTER'
                 })
 
@@ -857,11 +857,11 @@ async def on_message(message):
                     color=embed_color)
                 embed.add_field(
                     name=":white_small_square: Please run again this command as shown in the example:", 
-                    value="`--sin3d-newsletter {{experimentName}}`", 
+                    value="`--sin3d-newsletter {{experimentId}}`", 
                     inline=False)
                 embed.add_field(
                     name="\t__Example:__", 
-                    value="\t`--sin3d-newsletter experimentName`",
+                    value="\t`--sin3d-newsletter experimentId`",
                     inline=False)
                 embed.set_footer(text="You do not need to pass all params but at least one") 
                 
